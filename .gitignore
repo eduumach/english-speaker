@@ -10,3 +10,9 @@ wheels/
 .venv
 .env
 tutor.db
+
+# IDE
+.claude/
+
+# OS
+.DS_Store

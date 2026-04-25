@@ -1,12 +1,27 @@
 [project]
 name = "english-speaker"
 version = "0.1.0"
-description = "Add your description here"
+description = "AI-powered English tutor with voice conversations"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.136.1",
-    "livekit-agents[cartesia,deepgram,deepseek,elevenlabs,openai,silero,turn-detector]~=1.4",
+    "livekit-agents[cartesia,deepgram,elevenlabs,openai,silero,turn-detector]~=1.4",
     "python-dotenv>=1.2.2",
     "uvicorn>=0.46.0",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.12",
 ]
