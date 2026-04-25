@@ -1,4 +1,6 @@
 from typing import AsyncIterable
+import asyncio
+import json
 
 from dotenv import load_dotenv
 from rich.panel import Panel
@@ -44,6 +46,9 @@ class TutorAgent(Agent):
         full = "".join(chunks).strip()
         if full:
             _print_tutor(full)
+            asyncio.ensure_future(
+                _send_data({"type": "tutor", "text": full})
+            )
 
         async def _replay():
             for c in chunks:
@@ -77,6 +82,19 @@ async def create_activity(
     scenes_data = [{"idx": i, "description": s} for i, s in enumerate(scenes)]
     db.save_activity(topic, scenes_data)
     _current_session_id = db.start_session(topic)
+    profile = db.get_profile()
+    asyncio.ensure_future(
+        _send_data({
+            "type": "activity",
+            "info": {
+                "topic": topic,
+                "level": profile["level"],
+                "totalSessions": profile["total_sessions"],
+                "numScenes": len(scenes),
+            },
+            "scenes": [{"idx": s["idx"], "description": s["description"], "completed": False} for s in scenes_data],
+        })
+    )
     return {"ok": True, "session_id": _current_session_id, "num_scenes": len(scenes)}
 
 
@@ -99,6 +117,17 @@ async def log_mistake(
         explanation: 1-2 sentences in Brazilian Portuguese explaining the fix.
     """
     db.log_mistake(original, correction, category, explanation)
+    asyncio.ensure_future(
+        _send_data({
+            "type": "mistake",
+            "mistake": {
+                "original": original,
+                "correction": correction,
+                "category": category,
+                "explanation": explanation,
+            },
+        })
+    )
     return {"ok": True}
 
 
@@ -134,9 +163,9 @@ def _build_instructions() -> str:
     topics_block = ", ".join(topics) if topics else "(nenhum ainda)"
 
     return f"""
-You are the most fun English tutor in the world. Your student is Brazilian, level {profile["level"]}, and wants to learn while laughing. You can (and SHOULD) make light jokes when they make a mistake — like "hahaha wow, you invented a new English word!" — but ALWAYS teach the correct form after. Never offensive, just friendly teasing.
+You are a friendly English tutor. Your student is Brazilian, level {profile["level"]}. Keep it simple, short, and fun. Make light jokes when they make a mistake but always teach the correct form. Never offensive.
 
-YOU MUST SPEAK ONLY IN ENGLISH. Never speak Portuguese or any other language.
+YOU MUST SPEAK ONLY IN ENGLISH. Never use Portuguese or any other language.
 
 STUDENT CONTEXT:
 - Level: {profile["level"]}
@@ -146,56 +175,76 @@ STUDENT CONTEXT:
 RECENT MISTAKES (reinforce what they struggled with):
 {mistakes_block}
 
-GOLDEN RULES FOR A1 LEVEL:
-1. Use ONLY very simple English. The student is a beginner.
-2. Short sentences: max 6-8 words each.
-3. Basic vocabulary only: present simple, to be, can, like, want, have, do.
-4. Speak slowly. Repeat important words.
-5. If they don't understand, rephrase with even simpler words. NEVER translate to Portuguese — use synonyms, examples, or simpler sentences.
-6. Be patient and warm. Celebrate every small win.
+CRITICAL RULES — EVERY RESPONSE:
+1. ALWAYS one short paragraph (2-4 sentences max). Never long messages.
+2. Conversational tone — like texting a friend, not giving a lecture.
+3. Short sentences: 5-8 words each.
+4. Basic vocabulary only: present simple, to be, can, like, want, have, do.
+5. ONE idea per message. If you need to greet AND ask a question, do it in two separate messages.
+6. If they don't understand, rephrase with simpler words. Never translate.
+7. Warm but NOT hyper-energetic. Be chill and encouraging.
 
-SPEECH FORMATTING (IMPORTANT — you are being spoken out loud by a TTS):
-- Write the way you would SPEAK, not how you would TYPE.
-- NO numbered lists with digits like "1.", "2.", "3.". Say "First... Second... Third..." or "Option one... option two..." instead.
-- NO bullet points, no markdown symbols, no dashes as pauses.
-- NO ellipses "...". If you want a pause, end the sentence and start a new one.
-- NO ALL CAPS for emphasis — it sounds like shouting. Use the word naturally.
-- Avoid quotes around example phrases; just say them naturally.
+SPEECH FORMATTING (for TTS):
+- Write like you SPEAK, not like you TYPE.
+- NO numbers ("1.", "2."). Say "first... second..." if needed.
+- NO bullet points, NO markdown, NO dashes.
+- NO ellipses "...". End the sentence instead.
+- NO ALL CAPS.
+- NO quotes around example phrases; say them naturally.
 
 SESSION FLOW:
-1. Greet the student with lots of energy. Ask "how are you today?".
-2. Ask what topic they want to practice today. Offer 3 simple options (e.g., "introducing yourself", "ordering coffee", "talking about your day").
+1. Greet briefly. Just one line: "Hi! How are you today?"
+2. Ask what topic they want. Offer 2-3 simple options in one short sentence.
 3. Call `create_activity` with the topic and 3-5 short scenes.
-4. For EACH scene:
-   a. Explain the scene context in very simple English.
-   b. Give a model sentence for them to say or adapt. Say it slowly. Repeat once.
-   c. Ask them to try saying it in English.
-   d. WAIT for them to finish completely. Do NOT interrupt.
-   e. If wrong: make a light joke ("hahaha, close! Let me help you."), then say the correct version clearly. Call `log_mistake`. If right, celebrate ("Yes! Perfect!", "You got it!", "Amazing!").
-   f. Move to the next scene.
-5. After the last scene, do a fun recap of the main mistakes and praise their effort. Call `end_tutoring_session` with a short summary.
+4. For each scene:
+   a. Explain the scene in one sentence.
+   b. Say a model sentence. Repeat once.
+   c. Ask them to try.
+   d. WAIT completely. Do not interrupt.
+   e. If wrong: light joke + correct version + call `log_mistake`. If right: short praise ("Nice!", "Perfect!").
+   f. Move on.
+5. After last scene: quick recap + call `end_tutoring_session` + brief goodbye.
 
 HOW TO LOG MISTAKES:
-- `original` = exactly what they said (e.g., "I has a dog")
-- `correction` = the correct version ("I have a dog")
+- `original` = what they said
+- `correction` = correct version
 - `category` = "grammar", "vocabulary", "pronunciation", or "word_order"
-- `explanation` = 1-2 sentences IN ENGLISH, very simple ("Only 'he', 'she', 'it' use 'has'. For 'I', always use 'have'.")
+- `explanation` = 1 short sentence in English
 
-If the student asks to stop, call `end_tutoring_session` and say goodbye warmly.
+If the student asks to stop, call `end_tutoring_session` and say goodbye.
 """.strip()
 
 
 server = AgentServer()
 
+_agent_room = None
+
+
+async def _send_data(payload: dict) -> None:
+    if _agent_room:
+        try:
+            await _agent_room.local_participant.publish_data(
+                json.dumps(payload),
+                topic="transcript",
+            )
+        except Exception:
+            pass
+
 
 @server.rtc_session()
 async def entrypoint(ctx: JobContext):
+    global _agent_room
+    _agent_room = ctx.room
+
     session = AgentSession(
         vad=silero.VAD.load(),
         stt=deepgram.STT(model="nova-3"),
         llm=openai.LLM.with_deepseek(model="deepseek-chat"),
         tts=deepgram.TTS(model="aura-2-andromeda-en"),
-        turn_handling={"interruption": {"mode": "vad"}},
+        allow_interruptions=False,
+        discard_audio_if_uninterruptible=True,
+        min_endpointing_delay=0.8,
+        max_endpointing_delay=4.0,
         tts_text_transforms=["filter_markdown", "filter_emoji"],
     )
 
@@ -205,6 +254,9 @@ async def entrypoint(ctx: JobContext):
             return
         db.save_transcript(_current_session_id, "user", ev.transcript)
         _print_user(ev.transcript)
+        asyncio.ensure_future(
+            _send_data({"type": "user", "text": ev.transcript})
+        )
 
     @session.on("conversation_item_added")
     def _persist_assistant(ev):
@@ -221,7 +273,7 @@ async def entrypoint(ctx: JobContext):
 
     await session.start(agent=agent, room=ctx.room)
     await session.generate_reply(
-        instructions="Greet the student with lots of energy IN ENGLISH ONLY. Ask how they are today. Then ask what topic they want to practice, offering 3 very simple suggestions. Remember: only English, short sentences, A1 level."
+        instructions="Greet the student briefly. Just say hi and ask how they are. ONE short sentence. Then ask what topic they want — offer 2-3 options in one more short sentence. English only. A1 level. Chill tone."
     )
 
 
