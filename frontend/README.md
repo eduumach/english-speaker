@@ -1,21 +1,9 @@
-# React + TypeScript + Vite + shadcn/ui
+# English Tutor — Frontend
 
-This is a template for a new Vite project with React, TypeScript, and shadcn/ui.
-
-## Adding components
-
-To add components to your app, run the following command:
+React 19 + TypeScript + Vite + shadcn/ui + Tailwind 4 frontend for the AI English tutor.
 
 ```bash
-npx shadcn@latest add button
-```
-
-This will place the ui components in the `src/components` directory.
-
-## Using components
-
-To use the components in your app, import them as follows:
-
-```tsx
-import { Button } from "@/components/ui/button"
+bun install
+bun run dev     # starts on :5173, proxies /api to :8000
+bun run build   # outputs to dist/
 ```

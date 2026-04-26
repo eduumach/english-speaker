@@ -4,6 +4,14 @@ version = "0.1.0"
 description = "AI-powered English tutor with voice conversations"
 readme = "README.md"
 requires-python = ">=3.13"
+license = { text = "MIT" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Education",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Education",
+]
 dependencies = [
     "fastapi>=0.136.1",
     "livekit-agents[cartesia,deepgram,elevenlabs,openai,silero,turn-detector]~=1.4",
