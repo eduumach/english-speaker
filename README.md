@@ -2,6 +2,8 @@
 
 An AI-powered English tutor for Brazilian students that uses **voice conversations** to teach English through structured learning paths. Built with [LiveKit Agents](https://docs.livekit.io/agents/) and a React frontend.
 
+[![Demo](https://img.youtube.com/vi/WNQchJinbq4/0.jpg)](https://youtu.be/WNQchJinbq4)
+
 ## How it works
 
 1. The student speaks to a voice-based AI tutor (powered by DeepSeek + Deepgram)
@@ -33,7 +35,7 @@ An AI-powered English tutor for Brazilian students that uses **voice conversatio
 
 ```bash
 # 1. Clone and enter the project
-git clone <repo-url> && cd english-speaker
+git clone https://github.com/eduumach/english-speaker && cd english-speaker
 
 # 2. Copy env vars and fill in your API keys
 cp .env.example .env
