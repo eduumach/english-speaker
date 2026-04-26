@@ -1,9 +1,8 @@
 import { useState } from "react"
 import { cn } from "@/lib/utils"
-import { useProgress } from "@/hooks/useProgress"
 import { ProgressPanel } from "@/components/ProgressPanel"
 import { X, CheckCircle2, Circle, BookOpen, TrendingUp, MessageCircle } from "lucide-react"
-import type { SessionInfo, Scene, Mistake, ChatMessage } from "@/types"
+import type { SessionInfo, Scene, Mistake, ChatMessage, ProgressData } from "@/types"
 
 interface SessionSheetProps {
   open: boolean
@@ -12,9 +11,10 @@ interface SessionSheetProps {
   scenes: Scene[]
   mistakes: Mistake[]
   messages: ChatMessage[]
+  progress: Partial<ProgressData>
 }
 
-type Tab = "session" | "progress"
+type Tab = "progress" | "session"
 
 const categoryColors: Record<string, string> = {
   grammar: "bg-amber-50 text-amber-700 ring-amber-200",
@@ -30,9 +30,9 @@ export function SessionSheet({
   scenes,
   mistakes,
   messages,
+  progress,
 }: SessionSheetProps) {
-  const [tab, setTab] = useState<Tab>("session")
-  const progress = useProgress()
+  const [tab, setTab] = useState<Tab>("progress")
 
   return (
     <>
@@ -52,22 +52,22 @@ export function SessionSheet({
         <header className="flex items-center justify-between border-b px-5 py-4">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setTab("session")}
-              className={cn(
-                "text-sm font-medium transition",
-                tab === "session" ? "text-neutral-900" : "text-neutral-400 hover:text-neutral-600"
-              )}
-            >
-              Session
-            </button>
-            <button
               onClick={() => setTab("progress")}
               className={cn(
                 "text-sm font-medium transition",
                 tab === "progress" ? "text-neutral-900" : "text-neutral-400 hover:text-neutral-600"
               )}
             >
-              Progress
+              Path
+            </button>
+            <button
+              onClick={() => setTab("session")}
+              className={cn(
+                "text-sm font-medium transition",
+                tab === "session" ? "text-neutral-900" : "text-neutral-400 hover:text-neutral-600"
+              )}
+            >
+              Now
             </button>
           </div>
           <button
@@ -184,10 +184,10 @@ export function SessionSheet({
 
         {tab === "progress" && (
           <ProgressPanel
-            path={progress.path}
+            path={progress.path ?? null}
             level={progress.profile?.level ?? "A1"}
             totalSessions={progress.profile?.total_sessions ?? 0}
-            student={progress.student}
+            student={progress.student ?? null}
             levelHistory={progress.level_history ?? []}
           />
         )}

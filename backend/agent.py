@@ -323,11 +323,23 @@ async def entrypoint(ctx: JobContext):
         if role == "assistant" and text:
             db.save_transcript(_current_session_id, role, text)
 
+    student = db.get_student_profile()
     path = db.get_active_path()
     if path and db.get_lesson_progress(path["id"]):
         greeting = build_resume_prompt(path)
+    elif not student:
+        greeting = (
+            "This is the student's FIRST session. Start onboarding NOW. "
+            "Say hi in ONE short sentence and immediately ask their name. "
+            "Do not offer topics yet. Do not ask how they are. "
+            "Just: short greeting + 'what's your name?'. English only. A1 level. Chill, warm tone."
+        )
     else:
-        greeting = "Greet the student briefly. Just say hi and ask how they are. ONE short sentence. Then ask what topic they want — offer 2-3 options in one more short sentence. English only. A1 level. Chill tone."
+        greeting = (
+            "Welcome the student back in ONE short sentence using their name if available. "
+            "Then ask what they want to practice today — offer 2-3 options in one more short sentence. "
+            "English only. A1 level. Chill tone."
+        )
 
     agent = TutorAgent(
         instructions=build_instructions(),

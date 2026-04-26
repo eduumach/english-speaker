@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react"
 import { useVoiceChat } from "@/hooks/useVoiceChat"
+import { useProgress } from "@/hooks/useProgress"
 import { MicButton } from "@/components/MicButton"
 import { ConnectionDialog } from "@/components/ConnectionDialog"
 import { SessionSheet } from "@/components/SessionSheet"
 import { GoalPill } from "@/components/GoalPill"
-import { Languages, HelpCircle, NotebookPen } from "lucide-react"
+import { GraduationCap } from "lucide-react"
 
 export function App() {
   const {
@@ -23,6 +24,7 @@ export function App() {
     toggleMic,
   } = useVoiceChat()
 
+  const progress = useProgress()
   const [sheetOpen, setSheetOpen] = useState(false)
 
   const lastTutorMessage = useMemo(() => {
@@ -31,8 +33,6 @@ export function App() {
     }
     return ""
   }, [messages])
-
-  const lessonName = sessionInfo?.topic ?? "Free conversation"
 
   return (
     <div className="relative flex h-screen flex-col bg-white text-neutral-900 overflow-hidden">
@@ -46,14 +46,18 @@ export function App() {
         <button
           onClick={() => setSheetOpen(true)}
           className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 transition"
-          aria-label="Session notes"
+          aria-label="Learning journey"
         >
-          <NotebookPen className="h-5 w-5" />
+          <GraduationCap className="h-5 w-5" />
         </button>
       </div>
 
       <div className="px-4 pt-12 sm:pt-10">
-        <GoalPill lesson={lessonName} />
+        <GoalPill
+          path={progress.path ?? null}
+          fallbackTopic={sessionInfo?.topic}
+          onClick={() => setSheetOpen(true)}
+        />
       </div>
 
       <main className="flex flex-1 flex-col items-center justify-center px-6">
@@ -84,7 +88,7 @@ export function App() {
         </div>
       </main>
 
-      <div className="flex flex-col items-center gap-1.5 pb-20">
+      <div className="flex flex-col items-center gap-1.5 pb-10">
         <span className="text-xs text-neutral-500">
           {status === "connected" ? "Session in progress" : "Not connected"}
         </span>
@@ -97,23 +101,6 @@ export function App() {
         </button>
       </div>
 
-      <nav className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-between px-6 py-5">
-        <button
-          onClick={() => setSheetOpen(true)}
-          className="flex items-center gap-1.5 text-sm font-semibold text-neutral-900 transition hover:opacity-70"
-        >
-          <HelpCircle className="h-4 w-4" />
-          I'm Stuck
-        </button>
-        <button
-          onClick={() => setSheetOpen(true)}
-          className="flex items-center gap-1.5 text-sm font-semibold text-neutral-900 transition hover:opacity-70"
-        >
-          <Languages className="h-4 w-4" />
-          Word Bank
-        </button>
-      </nav>
-
       <SessionSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
@@ -121,6 +108,7 @@ export function App() {
         scenes={scenes}
         mistakes={mistakes}
         messages={messages}
+        progress={progress}
       />
     </div>
   )
